@@ -11,7 +11,7 @@ copy_to(x, tablename, schemaname = NULL, append = FALSE, psql_opts = "")
 \arguments{
 \item{what}{a table name or sql query string}
 
-\item{psql_opt}{passed directly to the psql command line}
+\item{psql_opts}{passed directly to the psql command line}
 
 \item{x}{a data frame}
 
@@ -58,19 +58,20 @@ data(hflights)
 dim(hflights)
 
 system(paste("createdb rpgtesting"))
-connect("rpgtesting")
-begin()
-
-system.time(write_table(hflights))
-system.time(invisible(read_table("hflights")))
-
-rollback()
-disconnect()
 
 opts = paste("-d rpgtesting")
 system.time(copy_to(hflights, psql_opts = opts))
 system.time(invisible(copy_from("hflights", psql_opts = opts)))
 
+connect("rpgtesting")
+begin()
+
+## Sloooowwwwwww
+## system.time(write_table(hflights))
+system.time(invisible(read_table("hflights")))
+
+rollback()
+disconnect()
 system(paste("dropdb rpgtesting"))}
 }
 \author{
