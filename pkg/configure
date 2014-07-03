@@ -1,9 +1,0 @@
-#!/bin/sh
-${R_HOME}/bin/Rscript \
-  --vanilla --slave \
-  -e 'if ( require(Rcpp, quietly = TRUE) ) compileAttributes()'
-${R_HOME}/bin/Rscript \
-  --vanilla --slave \
-  -e 'if ( require(roxygen2, quietly = TRUE) &&
-           require(methods, quietly = TRUE) ) roxygenize()'
-exit
