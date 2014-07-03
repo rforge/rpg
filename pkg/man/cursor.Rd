@@ -43,7 +43,7 @@ begin()
 
 # write data frame contents
 data(mtcars)
-write_table(mtcars, row_names = "id", pkey = "id", overwrite = T)
+write_table(mtcars, row_names = "id", pkey = "id", overwrite = TRUE)
 
 # expand rows to columns 8 rows at a time
 x = foreach(i = cursor("SELECT * FROM mtcars", 8),
