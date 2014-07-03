@@ -86,6 +86,34 @@ BEGIN_RCPP
     return __sexp_result;
 END_RCPP
 }
+// result_dim
+IntegerVector result_dim();
+RcppExport SEXP rpg_result_dim() {
+BEGIN_RCPP
+    SEXP __sexp_result;
+    {
+        Rcpp::RNGScope __rngScope;
+        IntegerVector __result = result_dim();
+        PROTECT(__sexp_result = Rcpp::wrap(__result));
+    }
+    UNPROTECT(1);
+    return __sexp_result;
+END_RCPP
+}
+// get_tuple_info
+IntegerMatrix get_tuple_info();
+RcppExport SEXP rpg_get_tuple_info() {
+BEGIN_RCPP
+    SEXP __sexp_result;
+    {
+        Rcpp::RNGScope __rngScope;
+        IntegerMatrix __result = get_tuple_info();
+        PROTECT(__sexp_result = Rcpp::wrap(__result));
+    }
+    UNPROTECT(1);
+    return __sexp_result;
+END_RCPP
+}
 // query
 CharacterVector query(const char* sql = "", SEXP pars = R_NilValue);
 RcppExport SEXP rpg_query(SEXP sqlSEXP, SEXP parsSEXP) {
@@ -413,6 +441,20 @@ BEGIN_RCPP
     {
         Rcpp::RNGScope __rngScope;
         CharacterVector __result = async_status();
+        PROTECT(__sexp_result = Rcpp::wrap(__result));
+    }
+    UNPROTECT(1);
+    return __sexp_result;
+END_RCPP
+}
+// is_busy
+bool is_busy();
+RcppExport SEXP rpg_is_busy() {
+BEGIN_RCPP
+    SEXP __sexp_result;
+    {
+        Rcpp::RNGScope __rngScope;
+        bool __result = is_busy();
         PROTECT(__sexp_result = Rcpp::wrap(__result));
     }
     UNPROTECT(1);

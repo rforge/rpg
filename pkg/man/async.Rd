@@ -4,11 +4,14 @@
 \alias{async_status}
 \alias{cancel}
 \alias{finish_async}
+\alias{is_busy}
 \title{Asynchronous query processing}
 \usage{
 async_query(sql = "", pars = NULL)
 
 async_status()
+
+is_busy()
 
 cancel(stop_on_error = TRUE)
 
@@ -26,6 +29,7 @@ finish_async()
 will still return true)
 \code{async_status}: a results status object, possibly indicating an
 invalid query
+\code{is_busy}: a boolean
 }
 \description{
 Manage an asynchronous query
@@ -41,18 +45,29 @@ indicate the server has not finished or \code{"DONE"} to indicate
 there is nothing more to fetch.
 
 If \code{async_status} does not return \code{"DONE"}, then
-\code{finish_async} must be called to release all results. Otherwise some
-result objects will leak, at least until the connection is closed. Note
+you should call \code{finish_async} to free pending results. Note
 that a call to \code{finish_async} may block until the server is finished
 processing the command. It calls \code{cancel} internally but there is
 no guarantee the command will abort.
+
+Any pending results will be lost if you call \code{\link{query}},
+\code{\link{execute}} or \code{\link{fetch}} with a \code{sql} string prior
+to \code{async_query} returning \code{DONE}. If you need to issue queries
+while waiting on an async call, then use \code{\link{push_conn}} to save
+the query state, \code{\link{connect}} to make a new connetion, and then
+\code{\link{pop_conn}} followed by \code{async_status}.
+
+\code{is_busy} is a slightly faster shortcut to check whether the
+server has completed the query. You must still call \code{async_status} to
+fetch the results.
 }
 \note{
 In practice, you will be much better off using \code{\link{cursor}}
 as that will usually return very quickly even for large queries, and has
 the advantage of retrieving the results in chunks. You can call \code{cancel}
-while a cursor is active. It will simply return \code{PGRES_FATAL_ERROR} is
-the \code{cancel} is effective.
+while a cursor is active. The cursor will return \code{PGRES_FATAL_ERROR} if
+the \code{cancel} is effective. Alternately, issuing any query that sets the
+result status will have the same effect as \code{finish_async}.
 }
 \examples{
 \dontrun{
@@ -76,7 +91,7 @@ repeat
   Sys.sleep(1)
 }
 print(status)
-print(head(fetch()))
+head(fetch())
 finish_async()
 Sys.sleep(1)
 
@@ -109,9 +124,26 @@ sql1 = "SELECT mpg FROM mtcars LIMIT 3"
 sql2 = "SELECT cyl FROM mtcars LIMIT 4"
 async_query(paste(sql1, sql2, sep = "; "))
 while ( async_status() == "BUSY" ) NULL
-print(fetch())
-while ( async_status() == "BUSY" ) NULL
-print(fetch())
+fetch()
+while ( is_busy() ) NULL
+async_status()
+fetch()
+finish_async()
+
+# issue an async query and come back later
+async_query(sql1)
+push_conn()
+connect("rpgtesting")
+
+# fails because of transaction isolation
+fetch(sql2)
+pop_conn()
+async_status()
+
+# results from sql1
+fetch()
+
+# this is automatic if you issue new queries
 finish_async()
 
 # cleanup
