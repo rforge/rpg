@@ -337,7 +337,7 @@ List get_conn_defaults(const bool all = false)
   PQconninfoOption *defs = PQconndefaults(), *i = defs;
   while ( i && i->keyword )
   {
-    if ( all || i->val && strlen(i->val) )
+    if ( all || (i->val && strlen(i->val)) )
     {
       kw.push_back(i->keyword);
       ev.push_back(i->envvar ? i->envvar : "");
@@ -364,13 +364,24 @@ List get_conn_defaults(const bool all = false)
 //' 
 //' @examples
 //' \dontrun{
+//' # try connecting to default database
+//' system("createdb rpgtesting")
+//' connect("rpgtesting")
+//' begin()
+//' 
 //' libpq_version()
 //' encrypt_password("test", "tester")
 //' get_encoding()
 //' set_encoding("UTF8")
 //' set_error_verbosity("terse")
 //' set_error_verbosity("verbose")
-//' set_error_verbosity("default")}
+//' set_error_verbosity("default")
+//'
+//' # cleanup
+//' rollback()
+//' disconnect()
+//' system("dropdb rpgtesting")}
+//' 
 //' @rdname misc
 //' @export
 // [[Rcpp::export]]
@@ -818,8 +829,7 @@ bool async_query(const char* sql = "", SEXP pars = R_NilValue)
 // [[Rcpp::export]]
 CharacterVector async_status()
 {
-  if ( PQconsumeInput(conn) == 0 )
-    stop(PQerrorMessage(conn));
+  if ( PQconsumeInput(conn) == 0 ) stop(PQerrorMessage(conn));
   if ( PQisBusy(conn) == 1 ) return make_status("BUSY");
   PGresult *r = PQgetResult(conn);
   if ( r )
@@ -839,6 +849,8 @@ CharacterVector async_status()
 // [[Rcpp::export]]
 bool is_busy()
 {
+  if ( PQconsumeInput(conn) == 0 )
+    stop(PQerrorMessage(conn));
   return PQisBusy(conn) == 1;
 }
 
@@ -872,6 +884,7 @@ CharacterVector exec_param_serialize(const char* sql, SEXP obj)
 // [[Rcpp::export]]
 List fetch_stowed(const char* sql, const char* par)
 {
+  check_conn();
   set_res(PQexecParams(conn, sql, 1, NULL, &par, NULL, NULL, 1));
   int nrow = PQntuples(res),
       ncol = PQnfields(res);
