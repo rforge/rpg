@@ -287,7 +287,7 @@ check_transaction <- function() {
 #' supplied parameter values will be coerced to a matrix of the
 #' appropriate dimensions. If the number of supplied parameter
 #' values is not an even multiple of the number of parameters
-#' specified in the prepared statement, an error will occur.
+#' specified in the prepared statement, an error condition is raised.
 #' The passed parameters will be coerced to character strings.
 #' 
 #' If you supply a \code{name}, then you must use the same name
@@ -475,8 +475,10 @@ show_conn_stack <- function() {
 #' @return
 #' \code{async_query}: true if query was successfully sent (an invalid query
 #' will still return true)
+#' 
 #' \code{async_status}: a results status object, possibly indicating an
 #' invalid query
+#' 
 #' \code{is_busy}: a boolean
 #' 
 #' @note In practice, you will be much better off using \code{\link{cursor}}

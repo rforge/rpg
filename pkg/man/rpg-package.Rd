@@ -13,7 +13,7 @@ provided, as are function to retieve detailed session metadata.
 \tabular{ll}{
 Package: \tab rpg\cr
 Type: \tab Package\cr
-Version: \tab 0.1\cr
+Version: \tab 1.0\cr
 Date: \tab 2013-6-4\cr
 License: \tab GPL \cr
 }

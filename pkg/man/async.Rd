@@ -27,8 +27,10 @@ finish_async()
 \value{
 \code{async_query}: true if query was successfully sent (an invalid query
 will still return true)
+
 \code{async_status}: a results status object, possibly indicating an
 invalid query
+
 \code{is_busy}: a boolean
 }
 \description{

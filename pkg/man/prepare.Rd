@@ -38,7 +38,7 @@ execution loop is evaluted in C++ and so is quite fast. The
 supplied parameter values will be coerced to a matrix of the
 appropriate dimensions. If the number of supplied parameter
 values is not an even multiple of the number of parameters
-specified in the prepared statement, an error will occur.
+specified in the prepared statement, an error condition is raised.
 The passed parameters will be coerced to character strings.
 
 If you supply a \code{name}, then you must use the same name

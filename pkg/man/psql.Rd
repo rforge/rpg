@@ -19,7 +19,7 @@ input.
 If \code{psql_opts} is an empty string, then an attempt will be made to
 supply suitable options based on the current connection. If there is no
 active connection, psql will fallback to complied in defaults. If
-\code{psql_opts} is not an empty string, then it will be passed as is to
+\code{psql_opts} is not an empty string, then it will be passed as-is to
 psql.
 
 You can type psql's escape commands as usual. Try \code{\?}. You
