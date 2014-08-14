@@ -18,7 +18,7 @@ connect_ <- function(keywords, values) {
 #' @return \code{ping} returns one of the following:
 #' \tabular{ll}{
 #' \code{PQPING_OK}  \tab Server reachable \cr
-#' \code{PQPING_REJECT } \tab Server reachable but not accepting
+#' \code{PQPING_REJECT} \tab Server reachable but not accepting
 #' connections \cr
 #' \code{PQPING_NO_RESPONSE} \tab Server unreachable \cr
 #' \code{PQPING_NO_ATTEMPT} \tab Connection string is nonsense \cr}
@@ -599,11 +599,10 @@ is_busy <- function() {
     .Call('rpg_is_busy', PACKAGE = 'rpg')
 }
 
-#' @param stop_on_error call \code{\link{stop}} if cancel request cannot be issued
 #' @export
 #' @rdname async
-cancel <- function(stop_on_error = TRUE) {
-    invisible(.Call('rpg_cancel', PACKAGE = 'rpg', stop_on_error))
+cancel <- function() {
+    invisible(.Call('rpg_cancel', PACKAGE = 'rpg'))
 }
 
 #' @export

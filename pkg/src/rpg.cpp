@@ -23,7 +23,7 @@ CharacterVector connect_(CharacterVector keywords, CharacterVector values)
 //' @return \code{ping} returns one of the following:
 //' \tabular{ll}{
 //' \code{PQPING_OK}  \tab Server reachable \cr
-//' \code{PQPING_REJECT } \tab Server reachable but not accepting
+//' \code{PQPING_REJECT} \tab Server reachable but not accepting
 //' connections \cr
 //' \code{PQPING_NO_RESPONSE} \tab Server unreachable \cr
 //' \code{PQPING_NO_ATTEMPT} \tab Connection string is nonsense \cr}
@@ -855,13 +855,12 @@ bool is_busy()
   return PQisBusy(conn) == 1;
 }
 
-//' @param stop_on_error call \code{\link{stop}} if cancel request cannot be issued
 //' @export
 //' @rdname async
 // [[Rcpp::export]]
-void cancel(const bool stop_on_error = true)
+void cancel()
 {
-  cancel_(stop_on_error);
+  cancel_();
 }
 
 //' @export

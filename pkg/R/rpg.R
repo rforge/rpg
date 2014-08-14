@@ -49,6 +49,10 @@ NULL
 #' or use named arguments. The names of the arguments will be used
 #' as keywords and their values as values.
 #' 
+#' If a password was required but not provided, \code{connect} will
+#' will open a dialog and prompt for a password. The connection is
+#' then re-tried and the status returned.
+#' 
 #' @note Do not open a connection and then fork the R
 #' process. The behavior will be unpredictable. It is perfectly
 #' acceptable however to call \code{connect} within each
@@ -84,7 +88,17 @@ connect = function(dbname, ...)
   keywords = names(values)
   if ( is.null(keywords) || "" %in% keywords )
     stop("all arguments must be named")
-  connect_(keywords, as.character(values))
+  status = connect_(keywords, as.character(values))
+  if ( status == "CONNECTION_BAD" &&
+       get_conn_info("password.needed") &&
+       interactive() )
+  {
+     pw = get_pw()
+     keywords = c(keywords, "password")
+     values = c(values, pw)
+     return(connect_(keywords, as.character(values)))
+  }
+  return(status)
 }
 
 #' @details \code{fetch} returns the result of a query as a data frame. If
@@ -485,9 +499,12 @@ print.pg.trace.dump = function(x, ...)
 #' 
 #' @param sql any valid query returning rows
 #' @param by how many rows to return each iteration
+#' @param pars optional query parameters
 #' 
 #' @details This function generates an interator object that can be used with
-#' the \code{foreach-package}. It is possible to use the
+#' the \code{foreach-package}.
+#' 
+#' It is possible to use the
 #' \code{\%dopar\%} operator as shown in the example below. You must
 #' establish a connection to the database on each node and in your current
 #' session because the call to \code{cursor} requires it. Note that the
@@ -517,7 +534,7 @@ print.pg.trace.dump = function(x, ...)
 #' write_table(mtcars, row_names = "id", pkey = "id", overwrite = TRUE)
 #' 
 #' # expand rows to columns 8 rows at a time
-#' x = foreach(i = cursor("SELECT * FROM mtcars", 8),
+#' x = foreach(i = cursor("SELECT * FROM mtcars", by = 8),
 #'             .combine = rbind) %do% { i$mpg }
 #' print(x, digits = 2)
 #'         
@@ -549,23 +566,24 @@ print.pg.trace.dump = function(x, ...)
 #'  row.names(x) = x$rows
 #'  x$rows = NULL
 #'  print(noquote(x))
+#'  
+#'  clusterEvalQ(cl, rollback())
 #'  stopCluster(cl)
 #' }
 #' 
 #' #cleanup
-#' rollback()
 #' disconnect()
 #' system("dropdb rpgtesting")}
 #' 
-#' @seealso \code{foreach}, \code{\link{rollback}}
+#' @seealso \code{foreach}, \code{\link{rollback}}, \code{\link{query}}
 #' 
 #' @author Timothy H. Keitt
 #' @export
-cursor = function(sql, by = 1)
+cursor = function(sql, by = 1, pars = NULL)
 {
   check_transaction();
   cname = unique_name();
-  execute("DECLARE", cname, "CURSOR FOR", sql)
+  query(paste("DECLARE", cname, "NO SCROLL CURSOR FOR", sql), pars)
   f = function()
   {
     res = fetch(paste("FETCH", by, "FROM", cname))
@@ -573,7 +591,8 @@ cursor = function(sql, by = 1)
     if ( length(res) < 1 ) stop("StopIteration")
     return(res)
   }
-  structure(list(nextElem = f), class = c('cursor', 'abstractiter', 'iter'))
+  structure(list(nextElem = f, cursor_name = cname),
+            class = c('cursor', 'abstractiter', 'iter'))
 }
 
 #' @param x parameter values
@@ -582,9 +601,6 @@ cursor = function(sql, by = 1)
 execute_prepared = function(x, name = "")
 {
   x = as.matrix(x)
-  cols = num_prepared_params(name)
-  rows = ceiling(length(x) / cols)
-  dim(x) = c(rows, cols)
   storage.mode(x) = "character"
   execute_prepared_(x, name)
 }
