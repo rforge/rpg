@@ -424,15 +424,11 @@ write_table = function(x,
   status = query(sql)
   if ( status == "PGRES_COMMAND_OK" )
   {
-    x = format_dates(x)
     sqlpars = paste0("$", 1:ncol(x))
     sqlpars = as.csv(sqlpars)
     sql = paste("INSERT INTO", tableid, "(", colnames, ")")
     sql = paste(sql, "VALUES (", sqlpars, ")")
-    ssname = unique_name()
-    pstatus = prepare(sql, ssname)
-    if ( pstatus == "PGRES_FATAL_ERROR" ) return(pstatus)
-    estatus = execute_prepared(x, ssname)
+    estatus = prepare(sql)(x)
     if ( estatus == "PGRES_FATAL_ERROR" ) return(estatus)
     on.exit(commit(sp))
   }
@@ -596,14 +592,88 @@ cursor = function(sql, by = 1, pars = NULL)
             class = c('cursor', 'abstractiter', 'iter'))
 }
 
-#' @param x parameter values
+#' Prepared queries
+#'
+#' Prepare and execute queries
+#'
+#' @param sql a valid query string
+#'
+#' @details \code{prepare} prepares a statement for later execution.
+#' It returns a function that when called executes the prepared
+#' statement. Values passed to the returned function will substituted
+#' for parameters in the prepared statement. If the number of parameters
+#' supplied is a
+#' multiple of the number of open parameters in query prepared
+#' using \code{prepare}, then the prepared query will be executed
+#' repeatedly for each successive set of parameters. This repeated
+#' execution loop is evaluted in C++ and so is quite fast. The
+#' supplied parameter values will be coerced to a matrix of the
+#' appropriate dimensions. Values passed to the function will be
+#' recycled to match the number of query parameters.
+#' The passed parameters will be coerced to character strings.
+#'
+#' @note One can use pure SQL to achieve the same result.
+#'
+#' It is generally a good idea to wrap \code{prepare}
+#' in a transaction. If not in a transaction, you cannot rollback any updates
+#' and it will be much slower as PostgreSQL initiates a transaction-per-query
+#' by default.
+#'
+#' @return A function.
+#' 
+#' The function can take one argument. The values will be used
+#' to fill in parameters of the prepared statement. If no argument
+#' is passed, the statement will be executed without any parameters.
+#'
+#' @author Timothy H. Keitt
+#'
+#' @examples
+#' \dontrun{
+#' # try connecting to default database
+#' system("createdb rpgtesting")
+#' connect("rpgtesting")
+#' begin()
+#'
+#' # write data frame contents
+#' data(mtcars)
+#' write_table(mtcars)
+#'
+#' # delete the rows
+#' query("truncate mtcars")
+#' read_table(mtcars)
+#'
+#' # use prepare-execute to write rows
+#' pars = paste0("$", 1:11, collapse = ", ")
+#' sql = paste0("INSERT INTO mtcars VALUES (", pars, ")", collapse = " ")
+#' f = prepare(sql)
+#' f(mtcars)
+#' read_table(mtcars, limit = 5)
+#'
+#' # cleanup
+#' rollback()
+#' disconnect()
+#' system("dropdb rpgtesting")}
+#'
 #' @rdname prepare
 #' @export
-execute_prepared = function(x, name = "")
+prepare = function(sql)
 {
-  x = as.matrix(x)
-  storage.mode(x) = "character"
-  execute_prepared_(x, name)
+  stmt = unique_statement_id()
+  status = prepare_(sql, stmt)
+  if ( status != "PGRES_COMMAND_OK" ) stop(query_error())
+  function(x = NULL)
+  {
+    npars = num_prepared_params(stmt)
+    if ( is.null(x) || npars == 0 )
+    {
+      execute("EXECUTE", stmt)
+    }
+    else
+    {
+      x = matrix(format_for_send(x), ncol = npars)
+      execute_prepared_(x, stmt)
+    }
+  }
 }
 
 #' @param what the fields to return or all if NULL
@@ -837,7 +907,7 @@ copy_to = function(x, tablename,
 #' 
 #' @rdname transactions
 #' @export
-begin = function() execute("BEGIN")
+begin = function() query("BEGIN")
 
 #' @param savepoint an object produced by \code{savepoint}
 #' @rdname transactions
@@ -845,7 +915,7 @@ begin = function() execute("BEGIN")
 commit = function(savepoint = NULL)
 {
   if ( is.null(savepoint) )
-    execute("COMMIT")
+    query("COMMIT")
   else
     savepoint$commit()
 }
@@ -855,7 +925,7 @@ commit = function(savepoint = NULL)
 rollback = function(savepoint = NULL)
 {
   if ( is.null(savepoint) )
-    execute("ROLLBACK")
+    query("ROLLBACK")
   else
     savepoint$rollback()
 }
@@ -869,13 +939,15 @@ savepoint = function()
   {
     spname = unique_name()
     execute("SAVEPOINT", spname)
-    rollback = function() execute("ROLLBACK TO", spname)
-    commit = function() execute("RELEASE", spname)
+    rollback = function()
+      query(paste("ROLLBACK TO", spname))
+    commit = function()
+      query(paste("RELEASE", spname))
   }
   else
   {
-    rollback = function() execute("ROLLBACK")
-    commit = function() execute("COMMIT")
+    rollback = function() query("ROLLBACK")
+    commit = function() query("COMMIT")
   }
   list(rollback = rollback, commit = commit)
 }
@@ -1004,7 +1076,7 @@ delete_stowed = function(objnames, tablename = "rpgstow", schemaname = "rpgstow"
   tableid = format_tablename(tablename, schemaname)
   status = prepare(paste("DELETE FROM", tableid, "WHERE objname ~ $1"))
   if ( status == "PGRES_FATAL_ERROR" ) return(status)
-  status = execute_prepared(matrix(objnames, ncol = 1))
+  status = execute_prepared_(matrix(objnames, ncol = 1))
   if ( status == "PGRES_FATAL_ERROR" ) return(status)
   on.exit(commit(sp))
 }

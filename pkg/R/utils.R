@@ -1,3 +1,54 @@
+.onLoad = function(libname, pkgname)
+{
+  connect()
+}
+
+.onUnload = function(libpath)
+{
+  clean_up_all()
+}
+
+#' Convert R objects to strings
+#' 
+#' Prepare R objects for sending to postgresql
+#' 
+#' @param obj any object
+#' 
+#' @details R objects that will be written to postgresql must be converted to
+#' characters as all data is transferred to the server as text. The S3 method
+#' \code{foramt_for_send} accomplishes this. It accepts any object and returns
+#' a character representation.
+#' 
+#' You can define new conversions by supplying your own S3 override of
+#' \code{format_for_send}.
+#' 
+#' @export
+format_for_send = function(obj)
+{
+  UseMethod("format_for_send", obj)
+}
+
+#' @export
+format_for_send.default = function(obj) as.character(obj)
+
+#' @export
+format_for_send.list = function(obj)
+{
+  unlist(lapply(obj, format_for_send))
+}
+
+#' @export
+format_for_send.data.frame = function(obj)
+{
+  unlist(lapply(obj, format_for_send))
+}
+
+#' @export
+format_for_send.Date = function(obj)
+{
+  as.character(as.POSIXlt.Date(obj))
+}
+
 pg_type = function(x)
 {
   switch(class(x),
@@ -10,12 +61,6 @@ pg_type = function(x)
          logical = "boolean",
          Date = "date",
          "text")
-}
-
-#' @export
-.Last.lib = function(libpath)
-{
-  clean_up_all()
 }
 
 #' @export
@@ -73,14 +118,6 @@ dquote_esc = function(...)
   gsub("\"+", "\"",  paste0(paste0("\"", ...), "\""))
 }
 
-format_dates = function(x)
-{
-  f = function(a) inherits(a, "Date")
-  i = sapply(x, f)
-  if ( any(i) ) x[, i] = format(x[, i])
-  x
-}
-
 format_tablename = function(tablename, schemaname = NULL)
 {
   if ( is.null(schemaname) )
@@ -120,6 +157,12 @@ primary_key_name = function(tablename)
 unique_name = function()
 {
   dquote_esc(uuid::UUIDgenerate())
+}
+
+unique_statement_id = function()
+{
+  res = uuid::UUIDgenerate()
+  paste0("stmt", gsub("-", "", res))
 }
 
 table_exists = function(table, schema = NULL)
